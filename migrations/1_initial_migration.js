@@ -6,6 +6,8 @@ const CErc20Immutable = artifacts.require("CErc20Immutable");
 const CErc20Delegator = artifacts.require("CErc20Delegator");
 const ComptrollerG1 = artifacts.require("ComptrollerG1");
 
+const BigNumber = require('bignumber.js');
+
 const addresses = {
   'Fauceteer': '0x67c943Cd1292DB6F41d8B3DC24494b9396cB18A6',
   'BAT': '0x0EC2F54d2eEff7AB0c5ab8E570B894c6B941D9F3',
@@ -91,14 +93,18 @@ module.exports = async (deployer, network, accounts) => {
   }
   if(switchboard.s4) {
     console.log('Finally, trade in cTokens for our original assets and cleanup...');
-    /*r = await instances.Unitroller.exitMarket(addresses.cDAI, {from: accounts[1]});
+    r = await instances.Unitroller.exitMarket(addresses.cDAI, {from: accounts[1]});
     logtx('B exits the cDAI market', r);
     r = await instances.Unitroller.exitMarket(addresses.cBAT, {from: accounts[1]});
-    logtx('B exits the cBAT market', r);*/
-    r = await instances.cDAI.redeem(await instances.cDAI.balanceOf(accounts[1]), {from: accounts[1]});
-    logtx('B redeems all cDAI for DAI', r);
-    r = await instances.cBAT.redeem(await instances.cBAT.balanceOf(accounts[0]), {from: accounts[0]});
-    logtx('A redeems all cBAT for BAT', r);
+    logtx('B exits the cBAT market', r);
+    cDAIredeem = new BigNumber((await instances.cDAI.balanceOf(accounts[1])).toString(10))
+      .multipliedBy(0.95);
+    r = await instances.cDAI.redeem(cDAIredeem.toString(10), {from: accounts[1]});
+    logtx('B redeems most cDAI for DAI', r);
+    cBATredeem = new BigNumber((await instances.cBAT.balanceOf(accounts[0])).toString(10))
+      .multipliedBy(0.95);
+    r = await instances.cBAT.redeem(cBATredeem.toString(10), {from: accounts[0]});
+    logtx('A redeems most cBAT for BAT', r);
   } else {
     console.log('Skipping s4...');
   }
