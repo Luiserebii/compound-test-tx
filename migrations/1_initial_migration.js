@@ -17,12 +17,69 @@ module.exports = async (deployer, network, accounts) => {
   }
 
   const instances = {};
-  instances.Fauceteer = await IERC20.at(addresses.Fauceteer);
+  instances.Fauceteer = await Fauceteer.at(addresses.Fauceteer);
   instances.BAT = await IERC20.at(addresses.BAT);
   instances.DAI = await IERC20.at(addresses.DAI);
   instances.cBAT = await CErc20Interface.at(addresses.cBAT);
   instances.cDAI = await CErc20Interface.at(addresses.cDAI);
 
-  console.log(await instances.BAT.balanceOf(accounts[0]));
+  const switchboard = {
+    s1: false,
+    s2: true,
+    s3: false,
+    s4: false,
+  }
 
+  const amnts = {
+    mintBAT: '4000000000000000000000',
+    mintDAI: '950000000000000000000',
+    borrowBAT: '500000000000000000000'
+  };
+
+  if(switchboard.s1) {
+    //Acquire BAT and DAI from Fauceteer
+    console.log('Requesting tokens from Fauceteer...')
+    await instances.Fauceteer.drip(addresses.BAT, {from: accounts[0]});
+    console.log('A receives BAT');
+    await instances.Fauceteer.drip(addresses.DAI, {from: accounts[1]});
+    console.log('B receives DAI');
+    console.log('BAT and DAI filled!');
+    //Approve cBAT and cDAI to transfer BAT and DAI respectively
+    await instances.BAT.approve(addresses.cBAT, amnts.mintBAT, {from: accounts[0]});
+    console.log('A approves cBAT to transfer BAT');
+    await instances.DAI.approve(addresses.cDAI, amnts.mintDAI, {from: accounts[1]});
+    console.log('B approves cDAI to transfer DAI');
+    //Mint cTokens!
+    console.log('Attempt minting...');
+    await instances.cBAT.mint(amnts.mintBAT, {from: accounts[0]});
+    console.log(`A mints cBAT, supplying the money market with ${amnts.mintBAT} BAT`);
+    await instances.cDAI.mint(amnts.mintDAI, {from: accounts[1]});
+    console.log(`B mints cDAI, supplying the money market with ${amnts.mintDAI} DAI`);
+  } else {
+    console.log('Skipping s1...');
+  }
+  if(switchboard.s2) {
+    console.log('Attempting a cBAT borrow...');
+    await instances.cBAT.borrow(amnts.borrowBAT, {from: accounts[1]});
+    console.log(`B borrows ${amnts.borrowBAT} BAT`);
+  } else {
+    console.log('Skipping s2...');
+  }
+  if(switchboard.s3) {
+    console.log('Attemping to return borrowed cBAT...');
+    await instances.cBAT.repayBorrow(amnts.borrowBAT, {from: accounts[1]});
+    console.log(`B returns ${amnts.borrowBAT} BAT`);
+  } else {
+    console.log('Skipping s3...');
+  }
+  if(switchboard.s4) {
+    console.log('Finally, trade in cTokens for our original assets...');
+    await instances.cDAI.redeem(await cDAI.balanceOf(accounts[1]), {from: accounts[1]});
+    console.log('B redeems all cDAI for DAI');
+    await instances.cBAT.redeem(await cBAT.balanceOf(accounts[0]), {from: accounts[0]});
+    console.log('A redeems all cBAT for BAT');
+  } else {
+    console.log('Skipping s4...');
+  }
+  console.log('Finished executing test transactions! :)');
 };
