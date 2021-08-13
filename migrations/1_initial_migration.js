@@ -41,6 +41,9 @@ module.exports = async (deployer, network, accounts) => {
     borrowBAT: '50000000000000000'//'500000000000000000000'
   };
 
+  console.log(`A: ${accounts[0]}`);
+  console.log(`B: ${accounts[1]}`);
+
   let r;
 
   if(switchboard.s1) {
@@ -67,8 +70,8 @@ module.exports = async (deployer, network, accounts) => {
   }
   if(switchboard.s2) {
     console.log('Attempting a cBAT borrow...');
-    r = await instances.Unitroller.enterMarkets([addresses.cDAI], {from: accounts[1]});
-    logtx('B enters the market for using DAI as collateral', r);
+    r = await instances.Unitroller.enterMarkets([addresses.cDAI, addresses.cBAT], {from: accounts[1]});
+    logtx('B enters the market for using DAI as collateral, and cBAT to borrow', r);
     r = await instances.cBAT.borrow(amnts.borrowBAT, {from: accounts[1]});
     logtx(`B borrows ${amnts.borrowBAT} BAT`, r);
     console.log('BAT balance of borrower', (await instances.BAT.balanceOf(accounts[1])).toString(10));
@@ -94,10 +97,10 @@ module.exports = async (deployer, network, accounts) => {
     console.log('Skipping s4...');
   }
 
-  let res = await instances.Unitroller.getAccountLiquidity(accounts[1]);
-  let res2 = await instances.Unitroller.markets(addresses.cBAT);
-  console.log(recurseToString(res));
-  console.log(recurseToString(res2))
+  logres(await instances.Unitroller.getAccountLiquidity(accounts[1]));
+  logres(await instances.Unitroller.markets(addresses.cBAT));
+  logres(await instances.Unitroller.markets(addresses.cDAI));
+  logres(await instances.Unitroller.checkMembership(accounts[1], addresses.cDAI));
   console.log('Finished executing test transactions! :)');
 };
 
@@ -118,3 +121,25 @@ function logtx(msg, r) {
   console.log(msg);
   console.log(` > ${r.tx}`)
 }
+
+function logres(res) {
+  console.log(recurseToString(res));
+}
+
+/**
+ * NOTE: We have to also enter the market of the asset we're borrowing.
+ * Proof? Check the error message at
+ *  > 0xc6e8f3b0c566958b7cca947a382dd8f31dabf8a4baf377da5098b8cecf76d2bd
+ *
+ * Note that the error messages align, in ErrorReporter.sol:
+ * COMPTROLLER_REJECTION, BORROW_COMPTROLLER_REJECTION, MARKET_NOT_ENTERED
+ *
+ * Looking at the borrowAllowed() function in ComptrollerG1, we see:
+ *
+ *    if (!markets[cToken].accountMembership[borrower]) {
+ *        return uint(Error.MARKET_NOT_ENTERED);
+ *    }
+ *
+ * Therefore, ensure to add to market for collateral liquidity calculation
+ * AND token to borrow.
+ */
