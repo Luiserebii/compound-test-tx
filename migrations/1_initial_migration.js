@@ -2,6 +2,8 @@ const Migrations = artifacts.require("Migrations");
 const Fauceteer = artifacts.require("Fauceteer");
 const IERC20 = artifacts.require("IERC20");
 const CErc20Interface = artifacts.require("CErc20Interface");
+const CErc20Immutable = artifacts.require("CErc20Immutable");
+const CErc20Delegator = artifacts.require("CErc20Delegator");
 const ComptrollerG1 = artifacts.require("ComptrollerG1");
 
 const addresses = {
@@ -24,15 +26,15 @@ module.exports = async (deployer, network, accounts) => {
   instances.Fauceteer = await Fauceteer.at(addresses.Fauceteer);
   instances.BAT = await IERC20.at(addresses.BAT);
   instances.DAI = await IERC20.at(addresses.DAI);
-  instances.cBAT = await CErc20Interface.at(addresses.cBAT);
-  instances.cDAI = await CErc20Interface.at(addresses.cDAI);
+  instances.cBAT = await CErc20Immutable.at(addresses.cBAT);
+  instances.cDAI = await CErc20Delegator.at(addresses.cDAI);
   instances.Unitroller = await ComptrollerG1.at(addresses.Unitroller);
 
   const switchboard = {
     s1: false,
-    s2: true,
+    s2: false,
     s3: false, //true,
-    s4: false //true
+    s4: true //true
   }
 
   const amnts = {
@@ -88,11 +90,15 @@ module.exports = async (deployer, network, accounts) => {
     console.log('Skipping s3...');
   }
   if(switchboard.s4) {
-    console.log('Finally, trade in cTokens for our original assets...');
-    r = await instances.cDAI.redeem(await cDAI.balanceOf(accounts[1]), {from: accounts[1]});
+    console.log('Finally, trade in cTokens for our original assets and cleanup...');
+    /*r = await instances.Unitroller.exitMarket(addresses.cDAI, {from: accounts[1]});
+    logtx('B exits the cDAI market', r);
+    r = await instances.Unitroller.exitMarket(addresses.cBAT, {from: accounts[1]});
+    logtx('B exits the cBAT market', r);*/
+    r = await instances.cDAI.redeem(await instances.cDAI.balanceOf(accounts[1]), {from: accounts[1]});
     logtx('B redeems all cDAI for DAI', r);
-    r = await instances.cBAT.redeem(await cBAT.balanceOf(accounts[0]), {from: accounts[0]});
-    log('A redeems all cBAT for BAT', r);
+    r = await instances.cBAT.redeem(await instances.cBAT.balanceOf(accounts[0]), {from: accounts[0]});
+    logtx('A redeems all cBAT for BAT', r);
   } else {
     console.log('Skipping s4...');
   }
