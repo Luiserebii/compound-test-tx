@@ -9,12 +9,12 @@ const ComptrollerG1 = artifacts.require("ComptrollerG1");
 const BigNumber = require('bignumber.js');
 
 const addresses = {
-  'Fauceteer': '0x67c943Cd1292DB6F41d8B3DC24494b9396cB18A6',
-  'BAT': '0x0EC2F54d2eEff7AB0c5ab8E570B894c6B941D9F3',
-  'DAI': '0xE503E9484C0787863d9260559D43bf1B68ea4C92',
-  'cBAT': '0x49F80ddbFAD529dFe7B35158B733dc50A5f4Ef90',
-  'cDAI': '0x8bF0D4747553cFC954914643a7B65797706048fb',
-  'Unitroller': '0x641b3E3e96D2a1913340Ad4Df60E1e73D441Ab15'
+  'Fauceteer': '0xfCf2A2c2a92740A6Bf34145bdc23866c48AE0b75',
+  'BAT': '0x063E893423C6782B7cF565315599ED0d92D4F018',
+  'DAI': '0xF159106fe61DB52760Db86304d53351F2c89B321',
+  'cBAT': '0x0552E71307a1D1b532F1e03cEc20480046C98b06',
+  'cDAI': '0xe96c8732386b59Dfc8aFbE7C2AA5CC819836Ade6',
+  'Unitroller': '0x6c4573B4C294EBb1016F137516714ED556a1c000'
 };
 
 module.exports = async (deployer, network, accounts) => {
@@ -33,9 +33,9 @@ module.exports = async (deployer, network, accounts) => {
   instances.Unitroller = await ComptrollerG1.at(addresses.Unitroller);
 
   const switchboard = {
-    s1: false,
-    s2: false,
-    s3: false, //true,
+    s1: true,
+    s2: true,
+    s3: true, //true,
     s4: true //true
   }
 
@@ -98,21 +98,23 @@ module.exports = async (deployer, network, accounts) => {
     r = await instances.Unitroller.exitMarket(addresses.cBAT, {from: accounts[1]});
     logtx('B exits the cBAT market', r);
     cDAIredeem = new BigNumber((await instances.cDAI.balanceOf(accounts[1])).toString(10))
-      .multipliedBy(0.95);
+      .multipliedBy(0.3);
     r = await instances.cDAI.redeem(cDAIredeem.toString(10), {from: accounts[1]});
-    logtx('B redeems most cDAI for DAI', r);
+    logtx('B redeems some cDAI for DAI', r);
     cBATredeem = new BigNumber((await instances.cBAT.balanceOf(accounts[0])).toString(10))
-      .multipliedBy(0.95);
+      .multipliedBy(0.45);
     r = await instances.cBAT.redeem(cBATredeem.toString(10), {from: accounts[0]});
-    logtx('A redeems most cBAT for BAT', r);
+    logtx('A redeems some cBAT for BAT', r);
   } else {
     console.log('Skipping s4...');
   }
 
   logres(await instances.Unitroller.getAccountLiquidity(accounts[1]));
-  logres(await instances.Unitroller.markets(addresses.cBAT));
-  logres(await instances.Unitroller.markets(addresses.cDAI));
   logres(await instances.Unitroller.checkMembership(accounts[1], addresses.cDAI));
+  logres(await instances.Unitroller.checkMembership(accounts[1], addresses.cBAT));
+  logres(await instances.Unitroller.markets(addresses.cDAI));
+  logres(await instances.Unitroller.markets(addresses.cBAT));
+
   console.log('Finished executing test transactions! :)');
 };
 
